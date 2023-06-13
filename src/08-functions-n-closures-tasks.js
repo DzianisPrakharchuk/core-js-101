@@ -93,16 +93,15 @@ function getPolynom(...args) {
  *   ...
  *   memoizer() => the same random number  (next run, returns the previous cached result)
  */
+const cache = [];
+
 function memoize(func) {
-  let result;
-  let isCached = false;
-  return function (...args) {
-    if (!isCached) {
-      result = func(...args);
-      isCached = true;
-    }
-    return result;
-  };
+  if (!cache.length) {
+    cache.push(func());
+    return () => cache[0];
+  }
+
+  return () => cache[0];
 }
 
 
@@ -121,19 +120,16 @@ function memoize(func) {
  * }, 2);
  * retryer() => 2
  */
-function retry(func, attempts) {
-  return function (...args) {
-    let remainingAttempts = attempts;
-    while (remainingAttempts > 0) {
-      try {
-        return func(...args);
-      } catch (error) {
-        console.log(`Attempt ${attempts - remainingAttempts + 1} failed: ${error.message}`);
-        remainingAttempts -= 1;
-      }
-    }
-    throw new Error(`Function failed after ${attempts} attempts.`);
-  };
+let counter = 2;
+
+function retry(func, attemps) {
+  try {
+    return func();
+  } catch (e) {
+    counter += 1;
+
+    return counter > attemps ? func() : retry.bind(this, func, attemps);
+  }
 }
 
 
@@ -215,12 +211,30 @@ function partialUsingArguments(fn, ...args1) {
  *   getId10() => 11
  */
 function getIdGeneratorFunction(startFrom) {
-  let nextId = startFrom;
-  return function () {
-    const curentId = nextId;
-    nextId += 1;
-    return curentId;
+  const ids = [];
+
+  const getId = function getIds(id) {
+    let current;
+
+    if (!ids.find((el) => el.id === id)) {
+      current = {
+        id,
+        index: 0,
+      };
+
+      ids.push(current);
+    } else {
+      current = ids.find((el) => el.id === id);
+    }
+
+    const result = current.id + current.index;
+
+    current.index += 1;
+
+    return result;
   };
+
+  return getId.bind(this, startFrom);
 }
 
 
