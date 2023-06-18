@@ -132,7 +132,7 @@ function angleBetweenClockHands(date) {
     delta = 360 - delta;
   }
 
-  return ((delta > 180 ? 360 - delta : delta) * Math.PI) / 180;
+  return (delta * Math.PI) / 180;
 }
 
 
