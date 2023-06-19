@@ -116,36 +116,98 @@ function fromJSON(proto, json) {
  *
  *  For more examples see unit tests.
  */
+function checkSelector(operations) {
+  const selectors = {};
+  const rightOrder = ['element', 'id', 'class', 'attribute', 'pseudoClass', 'pseudoElement'];
+  const operationsOrder = operations.map((el) => rightOrder.indexOf(el));
+  for (let i = 0; i < operations.length; i += 1) {
+    if (i !== operationsOrder.length - 1) {
+      if (operationsOrder[i] > operationsOrder[i + 1]) {
+        throw new Error('Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element');
+      }
+    }
+    if (!selectors[operations[i]]) {
+      selectors[operations[i]] = 1;
+    } else {
+      selectors[operations[i]] += 1;
+      if (operations[i] === 'element' || operations[i] === 'pseudoElement' || operations[i] === 'id') {
+        if (selectors[operations[i]] > 1) {
+          throw new Error('Element, id and pseudo-element should not occur more then one time inside the selector');
+        }
+      }
+    }
+  }
+}
 
-const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
-  },
+class CustomCSSSelectorBuilder {
+  constructor(selector = [], operations = []) {
+    checkSelector(operations);
+    this.selector = selector;
+    this.operations = operations;
+  }
 
-  id(/* value */) {
-    throw new Error('Not implemented');
-  },
+  element(value) {
+    return new CustomCSSSelectorBuilder(
+      this.selector.concat([value]),
+      this.operations.concat(['element']),
+    );
+  }
 
-  class(/* value */) {
-    throw new Error('Not implemented');
-  },
+  id(value) {
+    return new CustomCSSSelectorBuilder(
+      this.selector.concat([`#${value}`]),
+      this.operations.concat(['id']),
+    );
+  }
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
-  },
+  class(value) {
+    return new CustomCSSSelectorBuilder(
+      this.selector.concat([`.${value}`]),
+      this.operations.concat(['class']),
+    );
+  }
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
-  },
+  attr(value) {
+    return new CustomCSSSelectorBuilder(
+      this.selector.concat([`[${value}]`]),
+      this.operations.concat(['attribute']),
+    );
+  }
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
-  },
+  pseudoClass(value) {
+    return new CustomCSSSelectorBuilder(
+      this.selector.concat([`:${value}`]),
+      this.operations.concat(['pseudoClass']),
+    );
+  }
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
-  },
-};
+  pseudoElement(value) {
+    return new CustomCSSSelectorBuilder(
+      this.selector.concat([`::${value}`]),
+      this.operations.concat(['pseudoElement']),
+    );
+  }
+
+  /* eslint-disable class-methods-use-this */
+  combine(selector1, combinator, selector2) {
+    return new CustomCSSSelectorBuilder(
+      [`${selector1.selector.join('')} ${combinator} ${selector2.selector.join('')}`],
+    );
+  }
+
+  stringify() {
+    const res = this.selector.join('');
+    this.clearSelector();
+    return res;
+  }
+
+  clearSelector() {
+    this.selector = [];
+    this.operations = [];
+  }
+}
+
+const cssSelectorBuilder = new CustomCSSSelectorBuilder();
 
 
 module.exports = {
